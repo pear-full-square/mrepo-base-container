@@ -81,6 +81,9 @@ test('the replica an action is about: by the mrepo\'s unique URI, beside the mre
   t.alike([r.node, r.links, r.local('k')], ['main/container/.node.json', 'main/container/.shortcuts.json', 'links/k.json'], 'its node and its shortcut in main, its link\'s record in the links layer')
   t.is(replica({ runtime: { dir: '/w/x/node-1', work: null, uri: 'swarm-1/node-1' }, log: () => {} }).dir, '/w/x/containers/swarm-1/node-1', 'no work folder: beside the mrepo')
   t.exception(() => replica({ runtime: { dir: '/w/mrepos/boot', work: '/w', uri: 'boot' }, log: () => {} }), /no unique URI to make a replica by: boot/, 'an mrepo without a unique URI: no replica')
+  t.exception(() => replica({ runtime: { dir: '/mrepo', work: null, uri: 'swarm-1/node-1/container' }, log: () => {} }), /a replica makes no replica of its own: swarm-1\/node-1\/container/, 'a replica: none of its own')
+  const h = replica({ runtime: { dir: '/w/mrepos/haiccing/base-package-crud/howto/query/node-1', work: '/w', uri: 'haiccing/base-package-crud/howto/query/node-1' }, log: () => {} })
+  t.alike([h.dir, /^haicc-haiccing-base-package-crud-howto-query-node-1-[0-9a-f]{8}$/.test(h.name)], ['/w/containers/haiccing/base-package-crud/howto/query/node-1', true], 'a unique URI that is a path: its folder by it, its container named by it')
   t.exception(() => replica({ runtime: { dir: null, uri: 'swarm-1/node-1' }, log: () => {} }), /no directory in the context/)
   t.is(MOUNT, '/mrepo', 'its folder inside its container')
 })
@@ -133,7 +136,7 @@ test('a replica made, started, reached, stopped, started again and removed: a re
     t.alike(await status(exec), { replica: 'container', mrepo: 'swarm-1/node-1/container', container: name, image: c.container.image, state: 'created' }, 'status: created')
     t.alike(await stop(exec), { stopped: 'container', container: name, state: 'created' }, 'stop, not running: left as it is')
 
-    t.alike(await start(exec), { started: 'container', container: name, state: 'running' }, 'start: running')
+    t.alike(await start(exec), { started: 'container', container: name, state: 'running', service: 'started' }, 'start: running, the replica in service by its commission')
     const s = await ask({ repo: placed, op: 'status' })
     t.alike([s?.pid, s?.repository.uri], [1, 'swarm-1/node-1/container'], 'its runtime answering on its socket in the mapped folder: process 1 of its container')
     // a request into its inbox folder, as the bridgehead reaches it: answered
@@ -147,7 +150,7 @@ test('a replica made, started, reached, stopped, started again and removed: a re
 
     t.alike(await stop(exec), { stopped: 'container', container: name, state: 'exited' }, 'stop: exited')
     t.alike([docker('inspect', '--format', '{{.State.ExitCode}}', name).out, existsSync(join(placed, 'runtime.sock'))], ['0', false], 'its runtime closed on being asked: ended with 0, its socket gone')
-    t.alike(await start(exec), { started: 'container', container: name, state: 'running' }, 'started again: the same container, the same folder')
+    t.alike(await start(exec), { started: 'container', container: name, state: 'running', service: 'started' }, 'started again: the same container, the same folder; not commissioned again, its service as it was')
     t.is((await ask({ repo: placed, op: 'status' }))?.pid, 1, 'its runtime answering again')
 
     exec.entries = []
